@@ -1,6 +1,7 @@
 from math import pi, degrees, radians, cos, sin, atan, acos, asin, sqrt
 import numpy as np
 import pygame
+from scipy import ndimage
 from scipy.spatial import distance
 
 from utils.misc import angle_correction, rotateVector, calculateAngle, distance_to_rect
@@ -201,6 +202,59 @@ class LeaderPositionsTracker:
         if len(self.corridor) > 1:
             pygame.draw.lines(env.gameDisplay, (150, 120, 50), False, [x[0] for x in self.corridor], 3)
             pygame.draw.lines(env.gameDisplay, (150, 120, 50), False, [x[1] for x in self.corridor], 3)
+        pass
+
+
+class AdvancedCorridor:
+    def __init__(self,
+                 host_object,
+                 sensor_name, scanner_width, scanner_height):
+        """
+        :param host_object:
+        :param sensor_name:
+        :param scanner_width: !! сейчас должны быть равны размерам среды
+        :param scanner_height:  !! сейчас должны быть равны размерам среды
+        """
+        self.host_object = host_object
+        self.sensor_name = sensor_name
+        self.corridor_array = np.zeros(shape=(scanner_width, scanner_height))
+        self.corridor_array_2 = np.zeros(shape=(scanner_width, scanner_height))
+        #self.corridor_surface = np.zeros(shape=(scanner_width, scanner_height, 3))
+        #self.corridor_surface[:, :, 0] = 0
+        #self.corridor_surface[:, :, 1] = 0
+        self.corridor_surface = pygame.Surface((scanner_width, scanner_height))
+        self.corridor_surface.set_alpha(200)
+        self.corridor_array_2 = np.zeros(shape=(scanner_width, scanner_height))
+
+        # self.obstacles_mask = np.zeros(shape=(scanner_width, scanner_height), dtype=np.bool)
+        # self.env_obstacles_scanned = False
+        self.road_mask = np.zeros(shape=(scanner_width, scanner_height), dtype=np.int32)
+        self.saving_period = 8
+        self.saving_counter = 0
+        self.prev_corridor_len = 0
+
+    def scan(self, env, corridor):
+        if self.saving_counter % self.saving_period == 0 and len(corridor) > 1:
+            if self.prev_corridor_len < len(corridor):
+                pygame.draw.polygon(self.corridor_surface, (255, 255, 255), [corridor[-2][0], corridor[-2][1], corridor[-1][1], corridor[-1][0]])
+                self.corridor_array = pygame.surfarray.array3d(self.corridor_surface)
+                self.prev_corridor_len = len(corridor)
+                print(self.corridor_array)
+                print("1", self.corridor_array.shape, np.unique(self.corridor_array))
+                self.corridor_array_2 = ndimage.sobel(self.corridor_array[:,:,2], mode="constant", cval=0)
+                print("2", self.corridor_array_2.shape, np.unique(self.corridor_array_2))
+                self.corridor_array_2[self.corridor_array_2 < 1] = 0
+                self.corridor_array_2[self.corridor_array_2 >=1] = 255
+
+
+        self.saving_counter += 1
+
+    def show(self, env):
+        #self.corridor_surface[self.road_mask > 0, 2] = 200
+        corridor_surface_new = pygame.surfarray.make_surface(self.corridor_array_2)
+        corridor_surface_new.set_alpha(220)
+        #env.gameDisplay.blit(self.corridor_surface, (0, 0))
+        env.gameDisplay.blit(corridor_surface_new, (0, 0))
         pass
 
 
@@ -485,13 +539,14 @@ class LeaderCorridor_lasers:
                 # эта функция не работает с коллинеарными
                 # есть вариант лучше, но я пока не смог привести его к матричному виду
                 # https://www.geeksforgeeks.org/check-if-two-given-line-segments-intersect/
-                rez = LeaderCorridor_lasers.intersect(corridor_lines[:, 0, :], corridor_lines[:, 1, :], np.array([self.host_object.position]),
-                                  np.array([laser_end_point]))
+                rez = LeaderCorridor_lasers.intersect(corridor_lines[:, 0, :], corridor_lines[:, 1, :],
+                                                      np.array([self.host_object.position]),
+                                                      np.array([laser_end_point]))
                 intersected_line = corridor_lines[rez]
                 if len(intersected_line) > 0:
                     x = LeaderCorridor_lasers.seg_intersect(intersected_line[:, 0, :], intersected_line[:, 1, :],
-                                      np.array([self.host_object.position]),
-                                      np.array([laser_end_point]))
+                                                            np.array([self.host_object.position]),
+                                                            np.array([laser_end_point]))
                     # TODO: исключить коллинеарные, вместо их точек пересечения добавить ближайшую точку коллинеарной границы
                     # но это бесполезно при использовании функции intersect, которая не работает с коллинеарными
                     exclude_rows = np.concatenate([np.nonzero(np.isinf(x))[0], np.nonzero(np.isnan(x))[0]])
@@ -521,5 +576,6 @@ SENSOR_NAME_TO_CLASS = {
     "LeaderTrackDetector_vector": LeaderTrackDetector_vector,
     "LeaderTrackDetector_radar": LeaderTrackDetector_radar,
     "LeaderCorridor_lasers": LeaderCorridor_lasers,
-    "GreenBoxBorderSensor": GreenBoxBorderSensor
+    "GreenBoxBorderSensor": GreenBoxBorderSensor,
+    "AdvancedCorridor": AdvancedCorridor
 }
