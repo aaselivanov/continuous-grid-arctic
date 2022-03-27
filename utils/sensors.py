@@ -3,7 +3,7 @@ import numpy as np
 import pygame
 from scipy.spatial import distance
 
-from utils.misc import angle_correction, rotateVector, calculateAngle, distance_to_rect
+from utils.misc import angle_correction, rotateVector, calculateAngle, distance_to_rect, areDotsOnLeft
 
 
 class LaserSensor():
@@ -202,7 +202,19 @@ class LeaderPositionsTracker:
             pygame.draw.lines(env.gameDisplay, (150, 120, 50), False, [x[0] for x in self.corridor], 3)
             pygame.draw.lines(env.gameDisplay, (150, 120, 50), False, [x[1] for x in self.corridor], 3)
         pass
-
+        """
+        # закрасить полигонами путь
+        for i in range(len(self.corridor) - 1):
+            # TODO: иногда точки перехлёстываются при повороте, и не получается нормальный прямоугольник,
+            #  надо как-то это фиксить. Такой вариант плохо работает
+            if (np.linalg.norm(self.corridor[i][0] - self.corridor[i][1]) + np.linalg.norm(
+                    self.corridor[i + 1][0] - self.corridor[i + 1][1])) < (
+                    np.linalg.norm(self.corridor[i][0] - self.corridor[i + 1][1]) + np.linalg.norm(
+                    self.corridor[i + 1][0] - self.corridor[i][1])):
+                pygame.draw.polygon(env.gameDisplay, (255, 200, 50), [self.corridor[i][0], self.corridor[i][1], self.corridor[i + 1][1], self.corridor[i + 1][0]])
+            else:
+                pygame.draw.polygon(env.gameDisplay, (200, 255, 50), [self.corridor[i][0], self.corridor[i + 1][1], self.corridor[i][1], self.corridor[i + 1][0]])
+        """
 
 class LeaderTrackDetector_vector:
     """
@@ -486,6 +498,7 @@ class LeaderCorridor_lasers:
             self.host_object.position + rotateVector(np.array([self.laser_length, 0]), self.host_object.direction))
         self.lasers_end_points.append(
             self.host_object.position + rotateVector(np.array([self.laser_length, 0]), self.host_object.direction + 40))
+        lasers_values = np.ones(self.lasers_count, dtype=np.float32) * self.laser_length
         if len(corridor) > 1:
             corridor_lines = list()
             for i in range(len(corridor) - 1):
@@ -501,32 +514,32 @@ class LeaderCorridor_lasers:
                         corridor_lines.append([cur_object.rectangle.topright, cur_object.rectangle.topleft])
                         corridor_lines.append([cur_object.rectangle.bottomleft, cur_object.rectangle.topleft])
             corridor_lines = np.array(corridor_lines, dtype=np.float32)
-            lasers_values = []
+            # для визуализации
             self.lasers_collides = []
-            for laser_end_point in self.lasers_end_points:
+            for laser_i, laser_end_point in enumerate(self.lasers_end_points):
+                # определяем, какие линии границы коридора пересекает лазер
                 # эта функция не работает с коллинеарными
                 # есть вариант лучше, но медленней
                 # https://www.geeksforgeeks.org/check-if-two-given-line-segments-intersect/
-                rez = LeaderCorridor_lasers.intersect(corridor_lines[:, 0, :], corridor_lines[:, 1, :], np.array([self.host_object.position]),
-                                  np.array([laser_end_point]))
+                rez = LeaderCorridor_lasers.intersect(corridor_lines[:, 0, :], corridor_lines[:, 1, :],
+                                                      np.array([self.host_object.position]),
+                                                      np.array([laser_end_point]))
                 intersected_line = corridor_lines[rez]
                 if len(intersected_line) > 0:
+                    # определяем, где эти точки пересечений
                     x = LeaderCorridor_lasers.seg_intersect(intersected_line[:, 0, :], intersected_line[:, 1, :],
-                                      np.array([self.host_object.position]),
-                                      np.array([laser_end_point]))
+                                                            np.array([self.host_object.position]),
+                                                            np.array([laser_end_point]))
                     # TODO: исключить коллинеарные, вместо их точек пересечения добавить ближайшую точку коллинеарной границы
                     # но это бесполезно при использовании функции intersect, которая не работает с коллинеарными
                     exclude_rows = np.concatenate([np.nonzero(np.isinf(x))[0], np.nonzero(np.isnan(x))[0]])
                     norms = np.linalg.norm(x - self.host_object.position, axis=1)
-                    lasers_values.append(np.min(norms))
+                    lasers_values[laser_i] = np.min(norms)
                     closest_dot_idx = np.argmin(np.linalg.norm(x - self.host_object.position, axis=1))
                     self.lasers_collides.append(x[closest_dot_idx])
                 else:
                     self.lasers_collides.append(laser_end_point)
-        obs = np.ones(self.lasers_count, dtype=np.float32) * self.laser_length
-        for i, collide in enumerate(self.lasers_collides):
-            obs[i] = np.linalg.norm(collide - self.host_object.position)
-        return obs
+        return lasers_values
 
     def show(self, env):
         for laser_end_point in self.lasers_end_points:
@@ -536,6 +549,84 @@ class LeaderCorridor_lasers:
             pygame.draw.circle(env.gameDisplay, (200, 0, 100), laser_collide, 5)
 
 
+class LeaderCorridor_lasers_v2(LeaderCorridor_lasers):
+    def scan(self, env, corridor):
+        self.lasers_collides = []
+        self.lasers_end_points = []
+        self.lasers_end_points.append(
+            self.host_object.position + rotateVector(np.array([self.laser_length, 0]), self.host_object.direction - 40))
+        self.lasers_end_points.append(
+            self.host_object.position + rotateVector(np.array([self.laser_length, 0]), self.host_object.direction))
+        self.lasers_end_points.append(
+            self.host_object.position + rotateVector(np.array([self.laser_length, 0]), self.host_object.direction + 40))
+        lasers_values = np.ones(self.lasers_count, dtype=np.float32) * self.laser_length
+        if len(corridor) > 1:
+            corridor_lines = list()
+            for i in range(len(corridor) - 1):
+                corridor_lines.append([corridor[i][0], corridor[i + 1][0]])
+                corridor_lines.append([corridor[i][1], corridor[i + 1][1]])
+            corridor_lines = np.array(corridor_lines, dtype=np.float32)
+            corridor_rectangles = list()
+            for i in range(len(corridor) - 1):
+                # TODO: иногда точки перехлёстываются при повороте, и не получается нормальный прямоугольник,
+                #  надо как-то это фиксить. Такой вариант плохо работает
+                if (np.linalg.norm(corridor[i][0] - corridor[i][1]) + np.linalg.norm(corridor[i + 1][0] - corridor[i + 1][1])) < (np.linalg.norm(corridor[i][0] - corridor[i + 1][1]) + np.linalg.norm(corridor[i + 1][0] - corridor[i][1])):
+                    corridor_rectangles.append(
+                        np.array([corridor[i][0], corridor[i][1], corridor[i + 1][1], corridor[i + 1][0]]))
+                else:
+                    corridor_rectangles.append(
+                        np.array([corridor[i][0], corridor[i + 1][1], corridor[i][1], corridor[i + 1][0]]))
+            if self.react_to_obstacles:
+                obstacles_lines = []
+                for cur_object in env.game_object_list:
+                    if cur_object is env.follower:
+                        continue
+                    if cur_object.blocks_vision:
+                        obstacles_lines.append([cur_object.rectangle.bottomleft, cur_object.rectangle.bottomright])
+                        obstacles_lines.append([cur_object.rectangle.topright, cur_object.rectangle.bottomright])
+                        obstacles_lines.append([cur_object.rectangle.topright, cur_object.rectangle.topleft])
+                        obstacles_lines.append([cur_object.rectangle.bottomleft, cur_object.rectangle.topleft])
+            self.lasers_collides = []
+            for laser_i, laser_end_point in enumerate(self.lasers_end_points):
+                # определяем, какие линии границы коридора пересекает лазер
+                # эта функция не работает с коллинеарными
+                # есть вариант лучше, но медленней
+                # https://www.geeksforgeeks.org/check-if-two-given-line-segments-intersect/
+                rez = LeaderCorridor_lasers.intersect(corridor_lines[:, 0, :], corridor_lines[:, 1, :],
+                                                      np.array([self.host_object.position]),
+                                                      np.array([laser_end_point]))
+                intersected_line = corridor_lines[rez]
+                if len(intersected_line) > 0:
+                    # определяем, где эти точки пересечений
+                    x = LeaderCorridor_lasers.seg_intersect(intersected_line[:, 0, :], intersected_line[:, 1, :],
+                                                            np.array([self.host_object.position]),
+                                                            np.array([laser_end_point]))
+                    # TODO: исключить коллинеарные, вместо их точек пересечения добавить ближайшую точку коллинеарной границы
+                    # но это бесполезно при использовании функции intersect, которая не работает с коллинеарными
+                    exclude_rows = np.concatenate([np.nonzero(np.isinf(x))[0], np.nonzero(np.isnan(x))[0]])
+                    norms = np.linalg.norm(x - self.host_object.position, axis=1)
+                    # определяем, какие точки находятся внутри четырехугольников, обозначенных границами,
+                    # их не считаем за пересечения границ
+                    insideDots_anyRectangle = np.zeros(x.shape[0], dtype=np.bool)
+                    for rectangle in corridor_rectangles:
+                        insideDots_currRectangle = areDotsOnLeft(rectangle[0:2, :], x)
+                        insideDots_currRectangle &= areDotsOnLeft(rectangle[1:3, :], x)
+                        insideDots_currRectangle &= areDotsOnLeft(rectangle[2:4, :], x)
+                        insideDots_currRectangle &= areDotsOnLeft(rectangle[[3, 0], :], x)
+                        insideDots_anyRectangle |= insideDots_currRectangle
+                    norms[insideDots_anyRectangle] = np.inf
+                    norms = np.concatenate([norms, np.array([100])], axis=0)
+                    lasers_values[laser_i] = np.min(norms)
+                    closest_dot_idx = np.argmin(norms)
+                    if closest_dot_idx >= x.shape[0]:
+                        self.lasers_collides.append(laser_end_point)
+                    else:
+                        self.lasers_collides.append(x[closest_dot_idx])
+                else:
+                    self.lasers_collides.append(laser_end_point)
+        return lasers_values
+
+
 # Можно конечно через getattr из модуля брать, но так можно проверку добавить
 SENSOR_NAME_TO_CLASS = {
     "LaserSensor": LaserSensor,
@@ -543,5 +634,6 @@ SENSOR_NAME_TO_CLASS = {
     "LeaderTrackDetector_vector": LeaderTrackDetector_vector,
     "LeaderTrackDetector_radar": LeaderTrackDetector_radar,
     "LeaderCorridor_lasers": LeaderCorridor_lasers,
+    "LeaderCorridor_lasers_v2": LeaderCorridor_lasers_v2,
     "GreenBoxBorderSensor": GreenBoxBorderSensor
 }

@@ -1028,7 +1028,7 @@ class TestGameManual(Game):
                                              1000:0.75,
                                              2000:0.9,
                                              3000:1,
-                                             3100:0,
+                                             3100:1,
                                              4000:(0.5,1)},
                          #early_stopping={"max_distance_coef": 1.3, "low_reward": -100},
                          follower_sensors={
@@ -1044,8 +1044,8 @@ class TestGameManual(Game):
                                  'position_sequence_length': 100,
                                  'radar_sectors_number': 7,
                                  'detectable_positions': 'near'},
-                             "LeaderCorridor_lasers": {
-                                 'sensor_name': 'LeaderCorridor_lasers',
+                             "LeaderCorridor_lasers_v2": {
+                                 'sensor_name': 'LeaderCorridor_lasers_v2',
                                  "react_to_obstacles": True,
                              }
                          }

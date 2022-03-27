@@ -56,7 +56,7 @@ if __name__ == "__main__":
         env = gym.make("Test-Cont-Env-Manual-v0")
         # сиды с кривыми маршрутами: 9, 33
         # лидер сталкивается с препятствием: 21,22, 32, 33
-        #env.seed(33)
+        env.seed(89)
         env.reset()
         action = (0,0)
         
