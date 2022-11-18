@@ -567,8 +567,8 @@ class Game(gym.Env):
 
         self.bear = AbstractRobot("bear",
                                   image=self.bear_img,
-                                  height=50,
-                                  width=50,
+                                  height=25,
+                                  width=25,
                                   min_speed=self.leader_config["min_speed"],
                                   max_speed=1.9*self.leader_config["max_speed"],
                                   # max_speed=3,
