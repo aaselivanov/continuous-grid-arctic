@@ -609,7 +609,7 @@ class Game(gym.Env):
 
     def _chose_cur_point_for_leader(self, dyn_obstacle_pose, cur_dyn_point):
 
-        koeff = 200
+        koeff = 100
 
         p1 = (self.leader.position[0] + koeff, self.leader.position[1] + koeff)
         p2 = (self.leader.position[0] - koeff, self.leader.position[1] + koeff)
@@ -719,7 +719,7 @@ class Game(gym.Env):
 
         if self.add_bear:
             # self.cur_points_for_bear = self._chose_cur_point(self.bear.position, self.cur_points_for_bear)
-            if distance.euclidean(self.leader.position, self.bear.position) < 130:
+            if distance.euclidean(self.leader.position, self.bear.position) < 100:
                 # TODO : придумать чтоб медведь убегал от лидера
                 self.cur_points_for_bear = self._chose_cur_point_for_leader(self.leader.position, self.cur_points_for_bear)
                 self.bear.move_to_the_point(self.cur_points_for_bear)
