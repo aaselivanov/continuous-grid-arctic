@@ -400,9 +400,13 @@ class Game(gym.Env):
 
     def _create_robots(self):
         # TODO: сторонние конфигурации для создания роботов
+        #leader_start_position = (
+        #    random.randrange(self.DISPLAY_WIDTH / 2 + self.max_distance, self.DISPLAY_WIDTH - self.max_distance, 10),
+        #    random.randrange(self.max_distance, self.DISPLAY_HEIGHT - self.max_distance, 10))
+        # TODO : вернуть
         leader_start_position = (
-            random.randrange(self.DISPLAY_WIDTH / 2 + self.max_distance, self.DISPLAY_WIDTH - self.max_distance, 10),
-            random.randrange(self.max_distance, self.DISPLAY_HEIGHT - self.max_distance, 10))
+            random.randrange(self.DISPLAY_WIDTH / 2 + 4*50, self.DISPLAY_WIDTH - 4*50, 10),
+            random.randrange(4*50, self.DISPLAY_HEIGHT - 4*50, 10))
 
         leader_start_direction = angle_to_point(leader_start_position,
                                                 np.array((self.DISPLAY_WIDTH / 2, self.DISPLAY_HEIGHT / 2),
@@ -421,8 +425,10 @@ class Game(gym.Env):
                                     start_direction=leader_start_direction)
 
         # !!! вся эта процедура повторяется после создания в резете при вызове _pos_follower_behind_leader
-        follower_start_distance_from_leader = random.randrange(int(self.min_distance * 1.1),
-                                                               int(self.max_distance * 0.9), 1)
+#        follower_start_distance_from_leader = random.randrange(int(self.min_distance * 1.1),
+#                                                              int(self.max_distance * 0.9), 1)
+        follower_start_distance_from_leader = random.randrange(int(self.min_distance * 1.5),
+                                                               int(self.max_distance * 0.7), 1)
         follower_start_position_theta = radians(angle_correction(leader_start_direction + 180))
         follower_start_position = np.array((follower_start_distance_from_leader * cos(follower_start_position_theta),
                                             follower_start_distance_from_leader * sin(
