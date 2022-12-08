@@ -1898,24 +1898,24 @@ class TestGameManual(Game):
                                  'position_sequence_length': 100,
                                  'radar_sectors_number': 7,
                                  'detectable_positions': 'near'},
-                             "LeaderCorridor_lasers": {
-                                 'sensor_name': 'LeaderCorridor_lasers',
+                             "LeaderCorridor_lasers_v2": {
+                                 'sensor_name': 'LeaderCorridor_lasers_v2',
                                  "react_to_obstacles": True,
                                  "front_lasers_count": 5,
                                  "back_lasers_count": 2,
                                  "react_to_green_zone": True,
                                  "laser_length": 150
-                             },
-                             "LaserSensor": {
-                                 'sensor_name': 'LaserSensor',
-                                 "available_angle": 360,
-                                 "angle_step": 10,
-                                 "points_number": 20,
-                                 "sensor_range": 5,
-                                 "sensor_speed": 0.1,
-                                 "return_all_points":False,
-                                 "return_only_distances": True
                              }
+                             # "LaserSensor": {
+                             #     'sensor_name': 'LaserSensor',
+                             #     "available_angle": 360,
+                             #     "angle_step": 10,
+                             #     "points_number": 20,
+                             #     "sensor_range": 5,
+                             #     "sensor_speed": 0.1,
+                             #     "return_all_points":False,
+                             #     "return_only_distances": True
+                             # }
                          }
                          )
 
